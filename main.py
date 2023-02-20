@@ -11,10 +11,12 @@ import requests
 import smtplib
 import os
 from datetime import datetime
+from functools import wraps
+from flask import abort
 
 # -------------------------------------------------------------------------- #
 # ------------------------------- SMTP LIBRARY  ---------------------------- #
-# -------------------------------------------------------------------------- #
+# --------------------------- ----------------------------------------------- #
 OWN_EMAIL = os.environ.get('BLOG-APP-EMAIL')
 OWN_PASSWORD = os.environ.get('BLOG-APP-PASSWORD')
 
@@ -75,6 +77,19 @@ with app.app_context():
         return User.query.get(int(user_id))
 
 
+    # Create admin-only decorator
+    def admin_only(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # If id is not 1 then return abort with 403 error
+            if current_user.id != 1:
+                return abort(403)
+            # Otherwise continue with the route function
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+
     # CONFIGURE TABLE
     class BlogPost(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -123,7 +138,7 @@ with app.app_context():
     def home_page():
         if current_user.is_authenticated:
             all_post = BlogPost.query.all()
-            return render_template('index.html', posts=all_post, logged_in=current_user.is_authenticated)
+            return render_template('index.html', posts=all_post, logged_in=current_user.is_authenticated, id=current_user.id)
         else:
             return render_template('authenticate-user.html')
 
@@ -191,9 +206,10 @@ with app.app_context():
     @app.route("/post/<int:post_id>")
     def show_post(post_id):
         requested_post = BlogPost.query.get(post_id)
-        return render_template("show_post.html", post=requested_post, post_id=post_id)
+        return render_template("show_post.html", post=requested_post, post_id=post_id, current_user_id=current_user.id)
 
     @app.route('/new-post', methods=['GET', 'POST'])
+    @admin_only
     def new_post():
         form = CreatePostForm()
         if form.validate_on_submit():
@@ -211,6 +227,7 @@ with app.app_context():
         return render_template('make-post.html', form=form)
 
     @app.route('/edit-post/<int:post_id>', methods=['GET', 'POST'])
+    @admin_only
     def edit_post(post_id):
         post_to_edit = BlogPost.query.get(post_id)
         edit_form = CreatePostForm(
@@ -232,6 +249,7 @@ with app.app_context():
 
 
     @app.route("/delete/<int:post_id>")
+    @admin_only
     def delete_post(post_id):
         selected_post = BlogPost.query.get(post_id)
         db.session.delete(selected_post)
