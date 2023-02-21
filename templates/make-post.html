@@ -43,6 +43,10 @@
           <!-- This is where the form will go -->
           <div class="content">
             <h1 class="heading">New Post</h1>
+              <!--Load the CKEditor-->
+              {{ ckeditor.load() }}
+              <!--Configure it with the name of the form field from CommentForm-->
+              {{ ckeditor.config(name='blog_post_text') }}
             {{ wtf.quick_form(form, novalidate=True, button_map={'submit': 'primary'}) }}
           </div>
           <div class="container">

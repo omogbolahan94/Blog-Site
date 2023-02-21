@@ -92,6 +92,20 @@ with app.app_context():
 
 
     # CONFIGURE TABLE
+    class User(UserMixin, db.Model):
+        __tablename__ = "users"
+        id = db.Column(db.Integer, primary_key=True)
+        email = db.Column(db.String(100), unique=True)
+        password = db.Column(db.String(100))
+        name = db.Column(db.String(100))
+
+        # This will act like a List of BlogPost objects attached to each User.
+        # The "author" refers to the author property in the BlogPost class.
+        posts = relationship("BlogPost", back_populates="author")
+        # perform one-to-many relationship between user(parent) and comment(child)
+        comments = relationship('Comment', back_populates='comment_author')
+
+
     class BlogPost(UserMixin, db.Model):
         __tablename__ = 'blog_post'
         id = db.Column(db.Integer, primary_key=True)
@@ -107,17 +121,23 @@ with app.app_context():
         # Create Foreign Key, "users.id" the users refers to the tablename of User.
         author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
+        comments = relationship("Comment", back_populates="parent_post")
 
-    class User(UserMixin, db.Model):
-        __tablename__ = "users"
+
+    class Comment(db.Model):
+        __tablename__ = "comments"
         id = db.Column(db.Integer, primary_key=True)
-        email = db.Column(db.String(100), unique=True)
-        password = db.Column(db.String(100))
-        name = db.Column(db.String(100))
+        text = db.Column(db.Text, nullable=False)
 
-        # This will act like a List of BlogPost objects attached to each User.
-        # The "author" refers to the author property in the BlogPost class.
-        posts = relationship("BlogPost", back_populates="author")
+        # *******Add child relationship*******#
+        # "users.id" The users refers to the tablename of the Users class.
+        # "comments" refers to the comments property in the User class.
+        author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+        comment_author = relationship("User", back_populates="comments")
+
+        # ***************Child Relationship*************#
+        post_id = db.Column(db.Integer, db.ForeignKey("blog_post.id"))
+        parent_post = relationship("BlogPost", back_populates="comments")
 
 
     # db.create_all()
@@ -143,6 +163,11 @@ with app.app_context():
         img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
         body = CKEditorField("Blog Content", validators=[DataRequired()])
         submit = SubmitField("Submit Post")
+
+
+    class CommentForm(FlaskForm):
+        comment_text = CKEditorField("Comment", validators=[DataRequired()])
+        submit = SubmitField("Submit Comment")
 
 
     @app.route('/', methods=['GET'])
@@ -214,10 +239,27 @@ with app.app_context():
         logout_user()
         return redirect(url_for('home_page'))
 
-    @app.route("/post/<int:post_id>")
+    @app.route("/post/<int:post_id>", methods=['GET', 'POST'])
     def show_post(post_id):
         requested_post = BlogPost.query.get(post_id)
-        return render_template("show_post.html", post=requested_post, post_id=post_id, current_user_id=current_user.id)
+        form = CommentForm()
+        if form.validate_on_submit():
+            if not current_user.is_authenticated:
+                flash("You need to login or register to comment.")
+                return redirect(url_for("login"))
+
+            new_comment = Comment(
+                text=form.comment_text.data,
+                comment_author=current_user,
+                parent_post=requested_post
+            )
+            db.session.add(new_comment)
+            db.session.commit()
+            return redirect(url_for('show_post', post_id=post_id, current_user_id=current_user.id,
+                                    form=form))
+
+        return render_template("show_post.html", post=requested_post, post_id=post_id,
+                               current_user_id=current_user.id, form=form)
 
     @app.route('/new-post', methods=['GET', 'POST'])
     @admin_only
