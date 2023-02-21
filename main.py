@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
+from sqlalchemy.orm import relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
 from flask_bootstrap import Bootstrap
@@ -92,13 +93,19 @@ with app.app_context():
 
     # CONFIGURE TABLE
     class BlogPost(UserMixin, db.Model):
+        __tablename__ = 'blog_post'
         id = db.Column(db.Integer, primary_key=True)
         title = db.Column(db.String(250), unique=True, nullable=False)
         subtitle = db.Column(db.String(250), nullable=False)
         date = db.Column(db.String(250), nullable=False)
         body = db.Column(db.Text, nullable=False)
-        author = db.Column(db.String(250), nullable=False)
+        # author = db.Column(db.String(250), nullable=False)
         img_url = db.Column(db.String(250), nullable=False)
+
+        # Create reference to the User object, the "posts" refers to the posts property in the User class.
+        author = relationship("User", back_populates="posts")
+        # Create Foreign Key, "users.id" the users refers to the tablename of User.
+        author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
 
     class User(UserMixin, db.Model):
@@ -107,6 +114,10 @@ with app.app_context():
         email = db.Column(db.String(100), unique=True)
         password = db.Column(db.String(100))
         name = db.Column(db.String(100))
+
+        # This will act like a List of BlogPost objects attached to each User.
+        # The "author" refers to the author property in the BlogPost class.
+        posts = relationship("BlogPost", back_populates="author")
 
 
     # db.create_all()
@@ -218,12 +229,12 @@ with app.app_context():
                 subtitle=form.subtitle.data,
                 date=datetime.now().strftime('%B %d, %Y'),
                 body=form.body.data,
-                author=form.author.data,
+                author=current_user,  # form.author.data,
                 img_url=form.img_url.data
             )
             db.session.add(newer_post)
             db.session.commit()
-            return redirect(url_for('home_page'))
+            return redirect(url_for('home_page', current_user=current_user))
         return render_template('make-post.html', form=form)
 
     @app.route('/edit-post/<int:post_id>', methods=['GET', 'POST'])
