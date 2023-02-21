@@ -14,6 +14,7 @@ import os
 from datetime import datetime
 from functools import wraps
 from flask import abort
+from flask_gravatar import Gravatar
 
 # -------------------------------------------------------------------------- #
 # ------------------------------- SMTP LIBRARY  ---------------------------- #
@@ -70,6 +71,10 @@ login_manager.init_app(app)
 # SOURCE OF BLOG POST
 # post_url = 'https://api.npoint.io/5f37ba3bc35076eafb69'
 # all_post = requests.get(post_url).json()
+
+# ------------------------------ FLASK GRAVATER AVARTER --------------------------- #
+gravatar = Gravatar(app, size=50, rating='g', default='retro', force_default=False,
+                    force_lower=False, use_ssl=False, base_url=None)
 
 
 with app.app_context():

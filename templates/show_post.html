@@ -59,7 +59,8 @@
                             {% endif %}
                         </div>
 
-                        <!--Comments Area -->
+                        <div class="comment-area">
+                            <!--Comments Area -->
                         <!--Load the CKEditor-->
                             {{ ckeditor.load() }}
                         <!--Configure it with the name of the form field from CommentForm-->
@@ -67,16 +68,18 @@
                         <!--Create the wtf quickform from CommentForm-->
                             {{ wtf.quick_form(form, novalidate=True, button_map={"submit": "primary"}) }}
 
+                        </div>
+                        <br/>
                         <div class="col-lg-8 col-md-10 mx-auto comment">
                             <ul class="commentList">
                                 {% for comment in post.comments: %}
                                     <li>
                                         <div class="commenterImage">
-                                            <img src="https://pbs.twimg.com/profile_images/744849215675838464/IH0FNIXk.jpg"/>
+                                            <img src="{{ comment.comment_author.email | gravatar }}"/>
+                                            <span class="date sub-text">{{comment.comment_author.name}}</span>
                                         </div>
                                         <div class="commentText">
                                             {{comment.text|safe}}
-                                            <span class="date sub-text">{{comment.comment_author.name}}</span>
                                         </div>
                                     </li>
                                 {% endfor %}
